@@ -1,0 +1,35 @@
+server:
+  http_listen_port: 3200
+
+# Tempo's distributor has its own built-in OTLP receiver (unlike Prometheus/
+# Loki, no translation exporter is needed in the collector) — spans go
+# straight in over gRPC/HTTP, same ports the collector itself listens on.
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+# Cut a block every 5m instead of the multi-hour default so traces are
+# queryable quickly in a low-volume lab instead of sitting in the head block.
+ingester:
+  max_block_duration: 5m
+
+# Traces only need to live long enough to demo the Loki trace_id -> Tempo
+# link; 1h keeps local disk usage bounded for a throwaway environment.
+compactor:
+  compaction:
+    block_retention: 1h
+
+# Local disk backend — no object storage (S3/GCS) since this never needs to
+# survive a container rebuild for the lab's purposes.
+storage:
+  trace:
+    backend: local
+    local:
+      path: /var/tempo/traces
+    wal:
+      path: /var/tempo/wal

@@ -1,0 +1,45 @@
+# Auth disabled: no multi-tenant setup here, everything writes to the
+# implicit "fake" org. Fine for a single-app lab, not for shared infra.
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+
+# Single-binary, single-replica settings: local filesystem for chunks/rules,
+# replication_factor 1 (no redundancy), and an in-memory ring since there's
+# only ever one Loki instance to coordinate.
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+
+# TSDB is the current recommended index type (replaces the older boltdb-shipper).
+# Index is chunked into 24h periods under the "index_" prefix.
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # structured metadata lets OTLP resource/log attributes (service_name,
+  # trace_id, span_id, etc.) ride along as indexed labels instead of being
+  # flattened into the log line — this is what makes the Loki->Tempo
+  # trace_id derived-field link in Grafana work.
+  allow_structured_metadata: true
+  volume_enabled: true
+
+compactor:
+  working_directory: /loki/compactor

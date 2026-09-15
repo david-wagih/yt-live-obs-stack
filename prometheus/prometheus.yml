@@ -1,0 +1,7 @@
+# No scrape_configs: this instance takes metrics via remote-write (pushed
+# by the otel-collector's prometheusremotewrite exporter), not by scraping.
+# The receiver is enabled via the --web.enable-remote-write-receiver flag
+# in docker-compose.yml. scrape_interval below is just the (unused) default
+# for any scrape jobs added later.
+global:
+  scrape_interval: 15s

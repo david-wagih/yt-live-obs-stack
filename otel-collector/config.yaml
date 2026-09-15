@@ -1,0 +1,51 @@
+# Single OTLP receiver for all three signals — the app sends metrics, logs,
+# and traces here, and the pipelines below fan each one out to the backend
+# that actually understands it.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+
+exporters:
+  # Pushes to Prometheus via remote-write instead of exposing a /metrics
+  # endpoint for Prometheus to scrape. This exporter maps OTel resource
+  # attributes to Prometheus labels itself: service.name -> "job",
+  # service.instance.id -> "instance" — so series land with
+  # job="observability-demo-api", not job="otel-collector".
+  prometheusremotewrite:
+    endpoint: http://prometheus:9090/api/v1/write
+  # Loki's native OTLP/HTTP ingestion endpoint (Loki 3.x). Resource/log
+  # attributes are preserved as structured metadata (see allow_structured_metadata
+  # in loki-config.yaml) rather than flattened into the log line.
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+  # Tempo's distributor speaks OTLP/gRPC natively, so this is a plain
+  # passthrough — no format translation needed like the other two exporters.
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+  # Uncomment during rehearsal to see raw telemetry in `docker compose logs otel-collector`.
+  # debug:
+  #   verbosity: basic
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheusremotewrite]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/loki]
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/tempo]
