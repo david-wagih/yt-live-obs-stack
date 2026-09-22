@@ -4,6 +4,9 @@ A local, live-friendly observability stack for a YouTube demo: a small FastAPI a
 sends metrics, logs, and traces via OTLP to an OpenTelemetry Collector, which fans
 them out to Prometheus, Loki, and Tempo. Grafana visualizes all three.
 
+This is Part 1 (stand up the stack). For Part 2 (building the Grafana
+dashboard and alert rules live), see `DASHBOARDS_AND_ALERTS.md`.
+
 ## Architecture
 
 ```
@@ -45,7 +48,7 @@ Promtail, no Grafana Alloy.
 
 ## Prerequisites
 
-- Docker + Docker Compose v2
+- Docker + Docker Compose v2, **or** Podman + `podman compose` (Podman 4+; on macOS, run `podman machine init && podman machine start` first)
 - Python 3.8+ on the host (for the traffic generator; stdlib only, no pip install needed)
 
 ## Ports
@@ -72,6 +75,21 @@ make logs    # follow logs
 make down    # stop
 make clean   # stop and remove volumes/orphans
 ```
+
+The Makefile defaults to Docker. To use Podman instead, either pass it per
+invocation or export it for the session:
+
+```bash
+make CONTAINER_ENGINE=podman up
+# or
+export CONTAINER_ENGINE=podman
+make up
+```
+
+This just swaps `docker compose ...` for `podman compose ...` in every
+target — the `docker-compose.yml` file itself is unchanged and works as-is
+under Podman (verified: `podman compose up --build -d` brings up all 6
+containers with no modifications needed).
 
 Grafana: http://localhost:3000 (anonymous access enabled, Admin role — no login
 needed for the live; default admin/admin credentials also work and are
@@ -240,10 +258,11 @@ terminal during the live. Also available as `make traffic` / `make errors` /
   Expected and harmless — this is a local Docker Compose teaching environment,
   not a production deployment.
 - **`docker compose up` seems stuck on Grafana.** Grafana waits for Prometheus
-  and Loki to report healthy first (`depends_on: condition: service_healthy`).
-  Tempo and the OTel Collector don't ship a shell/HTTP client in their images,
-  so they can't have a Docker-level `HEALTHCHECK`; they're both retried-on by
-  their consumers instead (OTLP exporters retry automatically).
+  to report healthy first (`depends_on: condition: service_healthy`). Tempo,
+  Loki, and the OTel Collector don't ship a shell/HTTP client in their images
+  (all fully distroless as of Tempo 3.0.3 / Loki 3.6.17 / otel-collector-contrib
+  0.161.0), so they can't have a Docker-level `HEALTHCHECK`; they're retried-on
+  by their consumers instead (OTLP exporters retry automatically).
 - **No metrics/logs/traces show up at all.** Check `docker compose logs
   otel-collector` for exporter errors first — that's the single chokepoint
   all three signals pass through.

@@ -1,16 +1,19 @@
 .PHONY: up down clean logs traffic errors slow incident
 
+# Override with `make CONTAINER_ENGINE=podman up` (or `export CONTAINER_ENGINE=podman`)
+CONTAINER_ENGINE ?= docker
+
 up:
-	docker compose up --build -d
+	$(CONTAINER_ENGINE) compose up --build -d
 
 down:
-	docker compose down
+	$(CONTAINER_ENGINE) compose down
 
 clean:
-	docker compose down -v --remove-orphans
+	$(CONTAINER_ENGINE) compose down -v --remove-orphans
 
 logs:
-	docker compose logs -f
+	$(CONTAINER_ENGINE) compose logs -f
 
 traffic:
 	python3 loadgen/generate_traffic.py normal

@@ -24,7 +24,7 @@ services:
   # protocol that backend actually wants (remote-write, OTLP/HTTP, OTLP/gRPC).
   # See otel-collector/config.yaml for the receiver/exporter pipeline.
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.112.0
+    image: otel/opentelemetry-collector-contrib:0.161.0
     container_name: otel-collector
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
@@ -37,7 +37,7 @@ services:
       prometheus:
         condition: service_healthy
       loki:
-        condition: service_healthy
+        condition: service_started
       tempo:
         condition: service_started
 
@@ -47,7 +47,7 @@ services:
   # own service name (set via prometheusremotewrite exporter's resource-attr
   # mapping), not "otel-collector".
   prometheus:
-    image: prom/prometheus:v2.54.1
+    image: prom/prometheus:v3.14.0
     container_name: prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -67,25 +67,24 @@ services:
   # the older Promtail/push-api route. Single-binary, filesystem-backed —
   # fine for a local lab, not how you'd run it in prod (no replication/HA).
   loki:
-    image: grafana/loki:3.2.1
+    image: grafana/loki:3.6.17
     container_name: loki
     command: ["-config.file=/etc/loki/loki-config.yaml"]
     volumes:
       - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
     ports:
       - "3100:3100"
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/ready"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+    # 3.6.17's image is fully distroless (no wget/sh/busybox at all, unlike
+    # the 3.2.1 image this stack originally pinned) — no way to run a
+    # Docker-level HEALTHCHECK anymore. Same situation as Tempo/otel-collector
+    # below: retried-on by consumers instead (OTLP exporters retry automatically).
 
   # Trace store. Receives spans over OTLP/gRPC directly (its distributor
   # embeds an OTLP receiver, so no translation needed like Loki/Prometheus
   # need). Local disk backend, 1h block retention — traces are meant to be
   # short-lived here, just enough to demo trace_id correlation from Loki logs.
   tempo:
-    image: grafana/tempo:2.6.1
+    image: grafana/tempo:3.0.3
     container_name: tempo
     command: ["-config.file=/etc/tempo/tempo.yaml"]
     volumes:
@@ -98,7 +97,7 @@ services:
   # is enabled as Admin purely for lab convenience; don't do this outside
   # a local/throwaway environment.
   grafana:
-    image: grafana/grafana:11.2.2
+    image: grafana/grafana:13.2.2
     container_name: grafana
     ports:
       - "3000:3000"
@@ -113,6 +112,6 @@ services:
       prometheus:
         condition: service_healthy
       loki:
-        condition: service_healthy
+        condition: service_started
       tempo:
         condition: service_started
