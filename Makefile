@@ -1,7 +1,7 @@
 .PHONY: up down clean logs traffic errors slow incident
 
-# Override with `make CONTAINER_ENGINE=podman up` (or `export CONTAINER_ENGINE=podman`)
-CONTAINER_ENGINE ?= docker
+# Override with `make CONTAINER_ENGINE=docker up` (or `export CONTAINER_ENGINE=docker`)
+CONTAINER_ENGINE ?= podman
 
 up:
 	$(CONTAINER_ENGINE) compose up --build -d

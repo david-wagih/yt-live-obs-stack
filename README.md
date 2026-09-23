@@ -76,20 +76,23 @@ make down    # stop
 make clean   # stop and remove volumes/orphans
 ```
 
-The Makefile defaults to Docker. To use Podman instead, either pass it per
+The Makefile defaults to Podman. To use Docker instead, either pass it per
 invocation or export it for the session:
 
 ```bash
-make CONTAINER_ENGINE=podman up
+make CONTAINER_ENGINE=docker up
 # or
-export CONTAINER_ENGINE=podman
+export CONTAINER_ENGINE=docker
 make up
 ```
 
-This just swaps `docker compose ...` for `podman compose ...` in every
+This just swaps `podman compose ...` for `docker compose ...` in every
 target — the `docker-compose.yml` file itself is unchanged and works as-is
 under Podman (verified: `podman compose up --build -d` brings up all 6
 containers with no modifications needed).
+
+If you'd rather run plain `docker ...` commands and have them transparently
+use Podman, add `alias docker=podman` to your shell profile (see below).
 
 Grafana: http://localhost:3000 (anonymous access enabled, Admin role — no login
 needed for the live; default admin/admin credentials also work and are
